@@ -1,0 +1,113 @@
+/*QUESTION 1 QUERY*/
+
+
+SELECT f.title film_title, c.name AS category_name, COUNT(r.rental_date) rental_count
+   FROM film f
+   JOIN inventory i
+     ON i.film_id = f.film_id
+   JOIN rental r
+     ON i.inventory_id = r.inventory_id
+   JOIN film_category f_cat
+     ON f.film_id = f_cat.film_id
+   JOIN category c
+     ON f_cat.category_id = c.category_id
+ WHERE c.name IN ('Animation', 'Children', 'Classics', 'Comedy', 'Family')	
+ GROUP BY 1,2
+ ORDER BY 1
+ LIMIT 20
+
+
+
+
+
+/*QUESTION 2 QUERY*/
+
+
+WITH t1 AS ( 
+           SELECT f.film_id film_id_1, 
+                  f.title film_title, 
+                  c.NAME category_name,
+		          f.rental_duration,
+		   NTILE(4) OVER (ORDER BY rental_duration) AS rental_duration_quartile 
+           FROM film f 
+           INNER JOIN film_category fc 
+           ON         f.film_id = fc.film_id 
+           INNER JOIN category c 
+           ON fc.category_id = c.category_id 
+           WHERE c.NAME IN ('Animation',
+							'Children',
+							'Classics',
+							'Comedy',
+							'Family',
+							'Music')), 
+	 t2 AS (
+           SELECT DISTINCT(i.film_id) film_id_2,
+		   COUNT(r.rental_id) OVER (partition BY i.film_id) rental_count 
+           FROM inventory i
+           INNER JOIN rental r 
+           ON i.inventory_id = r.inventory_id 
+           ORDER BY 1) 
+
+SELECT		t1.film_title,
+    		t1.category_name,
+    		t1.rental_duration,
+    		t1.rental_duration_quartile,
+    		t2.rental_count
+FROM		t1
+INNER JOIN	t2
+ON		t1.film_id_1 = t2.film_id_2
+ORDER BY	t1.rental_duration_quartile,
+    		t2.rental_count DESC;
+
+
+
+
+
+/*QUESTION 3 QUERY*/
+
+
+SELECT t1.name, t1.standard_quartile, COUNT(t1.standard_quartile)
+FROM
+(SELECT f.title, c.name , f.rental_duration, NTILE(4) OVER (ORDER BY f.rental_duration) AS standard_quartile
+FROM film_category fc
+JOIN category c
+ON c.category_id = fc.category_id
+JOIN film f
+ON f.film_id = fc.film_id
+WHERE c.name IN ('Animation', 'Children', 'Classics', 'Comedy', 'Family', 'Music')) t1 
+GROUP BY 1, 2
+ORDER BY 1, 2
+
+
+
+/*QUESTION 4 QUERY*/
+
+
+SELECT DATE_TRUNC('month', p.payment_date) pay_month, c.first_name || ' ' || c.last_name AS full_name, COUNT(p.amount) AS pay_countpermon, SUM(p.amount) AS pay_amount
+FROM customer c
+JOIN payment p
+ON p.customer_id = c.customer_id
+WHERE c.first_name || ' ' || c.last_name IN
+(SELECT t1.full_name
+FROM
+(SELECT c.first_name || ' ' || c.last_name AS full_name, SUM(p.amount) as amount_total
+FROM customer c
+JOIN payment p
+ON p.customer_id = c.customer_id
+GROUP BY 1	
+ORDER BY 2 DESC
+LIMIT 10) t1) AND (p.payment_date BETWEEN '2007-01-01' AND '2008-01-01')
+GROUP BY 2, 1
+ORDER BY 2, 1, 3 
+
+
+
+
+
+
+
+
+
+
+
+
